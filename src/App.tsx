@@ -14,10 +14,11 @@ import {
   EVENT_UNSUBSCRIBE,
   EXTERNAL_FEED_DELTA,
   EXTERNAL_FEED_SNAPSHOT,
+  getMessageRequestLocal,
+  getMessageRequestRemote,
   PRODUCTS,
-  webSocketSource,
-  webSocketUrl,
-  webSocketUrl_local,
+  webSocketUrlLocal,
+  webSocketUrlRemote,
 } from './constants';
 import Button from './components/button/button';
 import { reduceOrders } from './reduce-orders';
@@ -28,11 +29,19 @@ const App = () => {
     bids: [],
     asks: [],
   });
-  const [productId, setProductId] = useState(PRODUCTS[0].id);
+  const [product, setProduct] = useState(PRODUCTS[0]);
   const [paused, setPaused] = useState(false);
 
-  const { sendJsonMessage, lastMessage, readyState } = useWebSocket(
-    webSocketSource === 'local' ? webSocketUrl_local : webSocketUrl,
+  const { sendJsonMessage: sendJsonMessageLocal, lastMessage: lastMessageLocal, readyState: readyStateLocal } = useWebSocket(
+    webSocketUrlLocal,
+    {
+      // Will attempt to reconnect on all close events, such as server shutting down
+      shouldReconnect: () => true,
+    },
+  );
+
+  const { sendJsonMessage: sendJsonMessageRemote, lastMessage: lastMessageRemote, readyState: readyStateRemote } = useWebSocket(
+    webSocketUrlRemote,
     {
       // Will attempt to reconnect on all close events, such as server shutting down
       shouldReconnect: () => true,
@@ -40,66 +49,59 @@ const App = () => {
   );
 
   const sendDeltaMessage = useCallback(
-
     (event: string) => {
-
-      console.log('pair', productId.split('_')[1])
-      webSocketSource === 'local'
-        ? (
-          sendJsonMessage({
-            "method": event.toUpperCase(),
-            "operation": "orderBook",
-            "channel": "binance.ETH-USDT"
-          })
-        )
-        : (
-          sendJsonMessage({
-            event,
-            feed: EXTERNAL_FEED_DELTA,
-            product_ids: [productId],
-          })
-        )
+      if(product.source === 'LOCAL'){
+        sendJsonMessageLocal(getMessageRequestLocal(event, product.id))
+      } else if(product.source === 'REMOTE') {
+        sendJsonMessageRemote(getMessageRequestRemote(event, product.id))
+      }
     },
-    [productId, sendJsonMessage],
+    [product, sendJsonMessageLocal, sendJsonMessageRemote],
   );
 
   // watch websocket readyState
   useEffect(() => {
     // if okay
-    if (readyState === 1) {
+    if (readyStateLocal === 1) {
       // if paused, we just unsubscribed
       if (paused) {
         return;
       }
-
+      sendDeltaMessage(EVENT_SUBSCRIBE.toUpperCase());
+    }
+    if (readyStateRemote === 1) {
+      // if paused, we just unsubscribed
+      if (paused) {
+        return;
+      }
       sendDeltaMessage(EVENT_SUBSCRIBE);
     }
-  }, [paused, productId, readyState, sendDeltaMessage]);
+  }, [paused, product, readyStateLocal, readyStateRemote, sendDeltaMessage]);
 
   // watch for new message
   useEffect(() => {
-    if (lastMessage !== null) {
-      const data = JSON.parse(lastMessage.data);
+    if (lastMessageLocal !== null) {
+      const data = JSON.parse(lastMessageLocal.data);
       if (!data['asks'] || !data['bids']) {
         return
       }
-      var feed = EXTERNAL_FEED_SNAPSHOT
-      if (webSocketSource === 'remote') {
-        feed = data['feed']
-      }
-
       var { bids, asks } = data;
+      bids = transformStringData(bids, 2, 5)
+      asks = transformStringData(asks, 2, 5)
+      setOrderBook({ bids, asks });
+    }
+  }, [lastMessageLocal]);
 
-      if (webSocketSource === 'local') {
-        bids = transformStringData(bids, 2, 5)
-        asks = transformStringData(asks, 2, 5)
-      }
-
+  // watch for new message
+  useEffect(() => {
+    if (lastMessageRemote !== null) {
+      const data = JSON.parse(lastMessageRemote.data);
+      const { bids, asks } = data;
+      const { feed } = data
       // snapshot message
       if (feed === EXTERNAL_FEED_SNAPSHOT) {
         setOrderBook({ bids, asks });
       }
-
       // delta message
       if (feed === EXTERNAL_FEED_DELTA) {
         if ((bids && bids.length) || (asks && asks.length)) {
@@ -117,7 +119,8 @@ const App = () => {
         }
       }
     }
-  }, [lastMessage]);
+  }, [lastMessageRemote]);
+
 
   // User has switched away from the tab (AKA tab is hidden)
   const onBlur = () => {
@@ -155,7 +158,7 @@ const App = () => {
           {translation.pair}:{' '}
           <span className="font-semibold">
             {PRODUCTS.length &&
-              PRODUCTS.find((product) => product?.id === productId)?.code}
+              PRODUCTS.find((p) => p?.id === product.id)?.code}
           </span>
         </p>
 
@@ -184,30 +187,31 @@ const App = () => {
       <div className="text-center p-8">
         <p>{translation.availablePairs}:</p>
         <ul className="mb-4">
-          {PRODUCTS.map((product) => {
+          {PRODUCTS.map((p) => {
             return (
               <li
-                key={product.id}
-                className={product.id === productId ? 'font-bold' : ''}>
-                {product.code}
+                key={p.id}
+                className={p.id === product.id ? 'font-bold' : ''}>
+                {p.code}
               </li>
             );
           })}
         </ul>
         <Button
           onClick={() =>
-            setProductId((oldFeed) => {
+            setProduct((oldFeed) => {
               const index = PRODUCTS.findIndex(
-                (product) => product.id === productId,
+                (p) => p.id === product.id,
               );
-              sendJsonMessage({
-                event: EVENT_UNSUBSCRIBE,
-                feed: EXTERNAL_FEED_DELTA,
-                product_ids: [oldFeed],
-              });
+              if (PRODUCTS[index].source === 'LOCAL') {
+                getMessageRequestLocal(EVENT_UNSUBSCRIBE, oldFeed.id)
+                sendJsonMessageLocal(getMessageRequestLocal(EVENT_UNSUBSCRIBE, oldFeed.id));
+              } else if (PRODUCTS[index].source === 'REMOTE') {
+                sendJsonMessageRemote(getMessageRequestRemote(EVENT_UNSUBSCRIBE, oldFeed.id));
+              }
               return index + 1 === PRODUCTS.length
-                ? PRODUCTS[0].id
-                : PRODUCTS[index + 1].id;
+                ? PRODUCTS[0]
+                : PRODUCTS[index + 1];
             })
           }>
           {translation.toggleFeed}
