@@ -1,6 +1,4 @@
-# BTC/ETH Live Trading Order Book
-
-Demo: [https://react-order-book.vercel.app/](https://react-order-book.vercel.app/)
+# test_react - Live Trading Order Book
 
 ![Jan-16-2022 18-26-29](https://user-images.githubusercontent.com/7080202/149672920-06918dbe-048e-43be-945c-2e66337c38ef.gif)
 
@@ -48,4 +46,4 @@ You don’t have to ever use `eject`. The curated feature set is suitable for sm
 You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
 
 To learn React, check out the [React documentation](https://reactjs.org/).
-# test_react
+
