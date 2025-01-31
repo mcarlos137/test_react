@@ -204,7 +204,6 @@ const App = () => {
                 (p) => p.id === product.id,
               );
               if (PRODUCTS[index].source === 'LOCAL') {
-                getMessageRequestLocal(EVENT_UNSUBSCRIBE, oldFeed.id)
                 sendJsonMessageLocal(getMessageRequestLocal(EVENT_UNSUBSCRIBE, oldFeed.id));
               } else if (PRODUCTS[index].source === 'REMOTE') {
                 sendJsonMessageRemote(getMessageRequestRemote(EVENT_UNSUBSCRIBE, oldFeed.id));
