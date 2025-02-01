@@ -1,4 +1,4 @@
-import calculateSpread from './calculate-spread';
+import { calculateSpread } from "../orderBook.utils";
 
 describe('calculateSpread', () => {
   describe('given ask', () => {

@@ -1,4 +1,4 @@
-import calculateRowDepth from './calculate-row-depth';
+import { calculateRowDepth } from "../orderBook.utils";
 
 describe('calculateRowDepth', () => {
   describe('given total', () => {

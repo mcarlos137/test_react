@@ -1,5 +1,5 @@
-import calculateTotals from './calculate-totals';
-import { IOrder } from './types';
+import { IOrder } from "../orderBook.types";
+import { calculateTotals } from "../orderBook.utils";
 
 describe('calculateTotals', () => {
   describe('given empty rows', () => {

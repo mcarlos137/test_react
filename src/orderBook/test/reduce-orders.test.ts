@@ -1,5 +1,5 @@
-import { reduceOrders } from './reduce-orders';
-import { IOrder } from './components/order-book/types';
+import { IOrder } from '../orderBook.types';
+import { reduceOrders } from '../orderBook.utils';
 
 describe('reduceOrders', () => {
   describe('given previousOldOrders', () => {

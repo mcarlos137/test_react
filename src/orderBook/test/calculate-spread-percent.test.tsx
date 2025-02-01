@@ -1,4 +1,4 @@
-import calculateSpreadPercent from './calculate-spread-percent';
+import { calculateSpreadPercent } from "../orderBook.utils";
 
 describe('calculateSpreadPercent', () => {
   describe('given spread', () => {

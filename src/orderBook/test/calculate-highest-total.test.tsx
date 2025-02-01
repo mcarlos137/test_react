@@ -1,5 +1,5 @@
-import calculateHighestTotal from './calculate-highest-total';
-import { IOrderWithTotal } from './types';
+import { IOrderWithTotal } from "../orderBook.types";
+import { calculateHighestTotal } from "../orderBook.utils";
 
 describe('calculateHighestTotal', () => {
   describe('given empty rows', () => {
